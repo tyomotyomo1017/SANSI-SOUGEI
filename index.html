@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>送迎ルート作成</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body class="bg-emerald-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const USERS = [
+        {
+          id: "u001",
+          name: "板屋越 曉子",
+          address: "三重県四日市市あかつき台一丁目1-1-90",
+          note: "",
+          phone: "338-0492"
+        },
+        {
+          id: "u002",
+          name: "後藤 敏郎",
+          address: "三重県四日市市あかつき台一丁目1-1-170",
+          note: "",
+          phone: "090-8335-7810"
+        },
+        {
+          id: "u003",
+          name: "荒木 昌子",
+          address: "三重県四日市市あかつき台一丁目1-1-137",
+          note: "",
+          phone: "338-0491"
+        },
+        {
+          id: "u004",
+          name: "横井 由紀子",
+          address: "三重県四日市市あかつき台二丁目1-1-134",
+          note: "",
+          phone: "337-1564"
+        },
+        {
+          id: "u005",
+          name: "後藤 ともこ",
+          address: "三重県四日市市あかつき台二丁目2-1-172",
+          note: "",
+          phone: "070-5250-5365"
+        },
+        {
+          id: "u006",
+          name: "荒木 みゆき",
+          address: "三重県四日市市あかつき台二丁目2-88",
+          note: "",
+          phone: "059-337-3781"
+        },
+        {
+          id: "u007",
+          name: "中川 昌子",
+          address: "三重県四日市市あかつき台二丁目2-1-40",
+          note: "",
+          phone: "059-338-4523"
+        },
+        {
+          id: "u008",
+          name: "伊藤 かず子",
+          address: "三重県四日市市あかつき台二丁目2-1-33",
+          note: "",
+          phone: "090-1746-1596"
+        },
+        {
+          id: "u009",
+          name: "青山 すずよ",
+          address: "三重県四日市市あかつき台三丁目3-1-189",
+          note: "",
+          phone: "090-4268-4217"
+        },
+        {
+          id: "u010",
+          name: "伊藤 みえこ",
+          address: "三重県四日市市あかつき台三丁目3-1-165",
+          note: "",
+          phone: "090-8736-5102"
+        },
+        {
+          id: "u011",
+          name: "横山 楽",
+          address: "三重県四日市市あかつき台四丁目4-1-81",
+          note: "",
+          phone: "090-5864-3876"
+        },
+        {
+          id: "u012",
+          name: "松本 眞佐子",
+          address: "三重県四日市市あかつき台五丁目7-29",
+          note: "",
+          phone: "059-337-1227"
+        },
+        {
+          id: "u013",
+          name: "鈴木 英子",
+          address: "三重県四日市市あかつき台六丁目6-6-4",
+          note: "",
+          phone: "059-338-0058"
+        }
+      ];
+
+      const STORAGE_KEY = "pickup-route-planner-config-no-api";
+
+      const defaultConfig = {
+        startLat: "35.024952",
+        startLng: "136.601613",
+        endLat: "34.987812",
+        endLng: "136.599919"
+      };
+
+      function loadConfig() {
+        try {
+          const savedConfig = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {};
+          return {
+            startLat: savedConfig.startLat || defaultConfig.startLat,
+            startLng: savedConfig.startLng || defaultConfig.startLng,
+            endLat: savedConfig.endLat || defaultConfig.endLat,
+            endLng: savedConfig.endLng || defaultConfig.endLng
+          };
+        } catch {
+          return defaultConfig;
+        }
+      }
+
+      function saveConfig(config) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+      }
+
+      function validateConfig(config) {
+        const missing = [];
+        if (!config.startLat || !config.startLng) missing.push("出発地点");
+        if (!config.endLat || !config.endLng) missing.push("到着地点");
+
+        const numbers = [config.startLat, config.startLng, config.endLat, config.endLng];
+        const invalidNumber = numbers.some((value) => value && !Number.isFinite(Number(value)));
+
+        if (missing.length > 0) return `${missing.join("・")}を設定してください。`;
+        if (invalidNumber) return "緯度経度は数値で入力してください。";
+        return "";
+      }
+
+      function getDistanceKm(pointA, pointB) {
+        const earthRadiusKm = 6371;
+        const toRad = (degree) => (degree * Math.PI) / 180;
+        const lat1 = toRad(Number(pointA.lat));
+        const lat2 = toRad(Number(pointB.lat));
+        const deltaLat = toRad(Number(pointB.lat) - Number(pointA.lat));
+        const deltaLng = toRad(Number(pointB.lng) - Number(pointA.lng));
+        const a =
+          Math.sin(deltaLat / 2) ** 2 +
+          Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function kanjiNumberToInt(value) {
+        const map = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
+        return map[value] ?? Number(value) ?? 0;
+      }
+
+      function estimateAkatsukidaiPoint(address) {
+        const match = address.match(/あかつき台([一二三四五六\d]+)丁目(\d+)(?:-(\d+))?(?:-(\d+))?(?:-(\d+))?/);
+        if (!match) {
+          return { lat: 35.024952, lng: 136.601613 };
+        }
+
+        const chome = kanjiNumberToInt(match[1]);
+        const blockA = Number(match[2] ?? 0);
+        const blockB = Number(match[3] ?? 0);
+        const blockC = Number(match[4] ?? 0);
+        const blockD = Number(match[5] ?? 0);
+
+        return {
+          lat: 35.02525 - chome * 0.00105 - blockA * 0.00008 - blockB * 0.00003,
+          lng: 136.5987 + chome * 0.00125 + blockA * 0.0001 + blockC * 0.000003 + blockD * 0.000001
+        };
+      }
+
+      function createRoute(config, selectedUsers) {
+        const configError = validateConfig(config);
+        if (configError) throw new Error(configError);
+        if (selectedUsers.length === 0) {
+          throw new Error("送迎する利用者を1名以上選択してください。");
+        }
+
+        const remainingUsers = [...selectedUsers];
+        const orderedUsers = [];
+        let currentPoint = {
+          lat: Number(config.startLat),
+          lng: Number(config.startLng)
+        };
+        let totalDistanceKm = 0;
+
+        while (remainingUsers.length > 0) {
+          let nearestIndex = 0;
+          let nearestDistance = Infinity;
+
+          remainingUsers.forEach((user, index) => {
+            const distance = getDistanceKm(currentPoint, estimateAkatsukidaiPoint(user.address));
+            if (distance < nearestDistance) {
+              nearestDistance = distance;
+              nearestIndex = index;
+            }
+          });
+
+          const [nearestUser] = remainingUsers.splice(nearestIndex, 1);
+          orderedUsers.push(nearestUser);
+          totalDistanceKm += nearestDistance;
+          currentPoint = estimateAkatsukidaiPoint(nearestUser.address);
+        }
+
+        totalDistanceKm += getDistanceKm(currentPoint, {
+          lat: Number(config.endLat),
+          lng: Number(config.endLng)
+        });
+
+        return {
+          orderedUsers,
+          distanceMeters: Math.round(totalDistanceKm * 1000),
+          duration: ""
+        };
+      }
+
+      function buildGoogleMapsUrl(config, orderedUsers) {
+        const params = new URLSearchParams({
+          api: "1",
+          origin: `${config.startLat},${config.startLng}`,
+          destination: `${config.endLat},${config.endLng}`,
+          travelmode: "driving",
+          dir_action: "navigate"
+        });
+
+        if (orderedUsers.length > 0) {
+          params.set("waypoints", orderedUsers.map((user) => user.address).join("|"));
+        }
+
+        return `https://www.google.com/maps/dir/?${params.toString()}`;
+      }
+
+      function buildGoogleMapsAppUrl(routeUrl) {
+        return routeUrl.replace(/^https?:\/\//, "comgooglemapsurl://");
+      }
+
+      function buildAppleMultiStopNavigationUrl(config, orderedUsers) {
+        const params = new URLSearchParams({
+          source: `${config.startLat},${config.startLng}`,
+          destination: `${config.endLat},${config.endLng}`,
+          mode: "driving",
+          start: "1"
+        });
+
+        orderedUsers.forEach((user) => {
+          params.append("waypoint", user.address);
+        });
+
+        return `https://maps.apple.com/directions?${params.toString()}`;
+      }
+
+      function buildSingleDestinationMapUrl(address) {
+        const params = new URLSearchParams({
+          api: "1",
+          destination: address,
+          travelmode: "driving"
+        });
+        return `https://www.google.com/maps/dir/?${params.toString()}`;
+      }
+
+      function buildAndroidNavigationUrl(address) {
+        return `google.navigation:q=${encodeURIComponent(address)}&mode=d`;
+      }
+
+      function buildIphoneGoogleMapsUrl(address) {
+        const params = new URLSearchParams({
+          api: "1",
+          destination: address,
+          travelmode: "driving",
+          dir_action: "navigate"
+        });
+        return `https://www.google.com/maps/dir/?${params.toString()}`;
+      }
+
+      function buildAppleMapsUrl(address) {
+        const params = new URLSearchParams({
+          daddr: address,
+          dirflg: "d"
+        });
+        return `https://maps.apple.com/?${params.toString()}`;
+      }
+
+      function buildLineShareTextUrl(text) {
+        return `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+      }
+
+      function buildRouteShareText(title, url) {
+        return `${title}\n${url}`;
+      }
+
+      function formatDistance(meters) {
+        return meters ? `${(meters / 1000).toFixed(1)} km` : "";
+      }
+
+      function formatDuration(duration) {
+        if (!duration) return "";
+        const seconds = Number(String(duration).replace("s", ""));
+        if (!Number.isFinite(seconds)) return "";
+        const minutes = Math.round(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        return hours > 0 ? `${hours}時間${rest}分` : `${minutes}分`;
+      }
+
+      function Icon({ children }) {
+        return <span className="text-2xl leading-none">{children}</span>;
+      }
+
+      function App() {
+        const [config, setConfig] = React.useState(loadConfig);
+        const [showSettings, setShowSettings] = React.useState(false);
+        const [selectedIds, setSelectedIds] = React.useState([]);
+        const [routeResult, setRouteResult] = React.useState(null);
+        const [routeUrl, setRouteUrl] = React.useState("");
+        const [message, setMessage] = React.useState("");
+        const [error, setError] = React.useState("");
+        const [isLoading, setIsLoading] = React.useState(false);
+
+        const selectedUsers = React.useMemo(
+          () => USERS.filter((user) => selectedIds.includes(user.id)),
+          [selectedIds]
+        );
+        const configError = validateConfig(config);
+        const allSelected = selectedIds.length === USERS.length;
+
+        function updateConfig(key, value) {
+          const next = { ...config, [key]: value };
+          setConfig(next);
+          saveConfig(next);
+          setMessage("設定を保存しました。");
+          setError("");
+        }
+
+        function resetRoute() {
+          setRouteResult(null);
+          setRouteUrl("");
+          setMessage("");
+          setError("");
+        }
+
+        function toggleUser(id) {
+          resetRoute();
+          setSelectedIds((current) =>
+            current.includes(id)
+              ? current.filter((selectedId) => selectedId !== id)
+              : [...current, id]
+          );
+        }
+
+        async function handleCreateRoute() {
+          setIsLoading(true);
+          setMessage("");
+          setError("");
+
+          try {
+            const result = createRoute(config, selectedUsers);
+            const mapsUrl = buildGoogleMapsUrl(config, result.orderedUsers);
+            setRouteResult(result);
+            setRouteUrl(mapsUrl);
+            setMessage("APIなしの簡易ルートを作成しました。");
+          } catch (err) {
+            setRouteResult(null);
+            setRouteUrl("");
+            setError(err instanceof Error ? err.message : "ルート作成に失敗しました。");
+          } finally {
+            setIsLoading(false);
+          }
+        }
+
+        async function copyText(text) {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return;
+          }
+
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          textarea.style.top = "0";
+          document.body.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+
+          const copied = document.execCommand("copy");
+          document.body.removeChild(textarea);
+
+          if (!copied) {
+            throw new Error("copy failed");
+          }
+        }
+
+        async function handleCopy() {
+          try {
+            await copyText(routeUrl);
+            setMessage("GoogleマップURLをコピーしました。");
+            setError("");
+          } catch {
+            setError("コピーできませんでした。Googleマップを開いてURLを共有してください。");
+          }
+        }
+
+        return (
+          <main className="min-h-screen text-slate-900">
+            <section className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 sm:px-6">
+              <header className="rounded-md bg-white p-5 shadow-sm ring-1 ring-emerald-100">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-md bg-emerald-700 text-white">
+                    <Icon>↗</Icon>
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold leading-tight text-emerald-950">
+                      送迎ルート作成 APIなし版
+                    </h1>
+                    <p className="mt-1 text-base text-slate-600">
+                      本日送迎する利用者を選択してください
+                    </p>
+                  </div>
+                </div>
+              </header>
+
+              <section className="rounded-md bg-white p-4 shadow-sm ring-1 ring-emerald-100">
+                <button
+                  type="button"
+                  onClick={() => setShowSettings((value) => !value)}
+                  className="flex min-h-12 w-full items-center justify-between rounded-md border-2 border-emerald-700 px-4 text-left text-lg font-bold text-emerald-900"
+                >
+                  <span>出発地・到着地 設定</span>
+                  <span>{showSettings ? "閉じる" : "開く"}</span>
+                </button>
+
+                {showSettings && (
+                  <div className="mt-4 grid gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        value={config.startLat}
+                        onChange={(event) => updateConfig("startLat", event.target.value.trim())}
+                        placeholder="出発 緯度"
+                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                      />
+                      <input
+                        value={config.startLng}
+                        onChange={(event) => updateConfig("startLng", event.target.value.trim())}
+                        placeholder="出発 経度"
+                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                      />
+                      <input
+                        value={config.endLat}
+                        onChange={(event) => updateConfig("endLat", event.target.value.trim())}
+                        placeholder="到着 緯度"
+                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                      />
+                      <input
+                        value={config.endLng}
+                        onChange={(event) => updateConfig("endLng", event.target.value.trim())}
+                        placeholder="到着 経度"
+                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                      />
+                    </div>
+                    {configError && (
+                      <div className="rounded-md border border-amber-300 bg-amber-50 p-3 font-semibold text-amber-900">
+                        {configError}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <section className="rounded-md bg-white p-4 shadow-sm ring-1 ring-emerald-100">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-emerald-950">利用者一覧</h2>
+                    <p className="text-base text-slate-600">選択中 {selectedIds.length} 名</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetRoute();
+                      setSelectedIds(allSelected ? [] : USERS.map((user) => user.id));
+                    }}
+                    className="min-h-12 rounded-md border-2 border-emerald-700 px-4 text-base font-bold text-emerald-800"
+                  >
+                    全員
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {USERS.map((user) => {
+                    const checked = selectedIds.includes(user.id);
+                    return (
+                      <label
+                        key={user.id}
+                        className={`flex cursor-pointer gap-3 rounded-md border-2 p-4 ${
+                          checked
+                            ? "border-emerald-600 bg-emerald-50"
+                            : "border-slate-200 bg-white"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleUser(user.id)}
+                          className="mt-1 h-7 w-7 accent-emerald-700"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words text-xl font-bold">{user.name}</p>
+                          <p className="mt-1 break-words text-base text-slate-600">{user.address}</p>
+                          <p className="mt-2 break-words text-base font-semibold text-emerald-900">
+                            {user.note}
+                          </p>
+                          <a
+                            href={`tel:${user.phone}`}
+                            className="mt-2 inline-flex min-h-10 items-center text-base font-semibold text-slate-800"
+                          >
+                            {user.phone}
+                          </a>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <button
+                type="button"
+                onClick={handleCreateRoute}
+                disabled={isLoading || selectedUsers.length === 0 || Boolean(configError)}
+                className="min-h-16 w-full rounded-md bg-emerald-700 px-5 text-xl font-bold text-white shadow-sm disabled:bg-slate-400"
+              >
+                {isLoading ? "ルート作成中..." : "APIなしでルート作成"}
+              </button>
+
+              {(message || error) && (
+                <div
+                  className={`rounded-md p-4 text-base font-bold ${
+                    error
+                      ? "border border-red-200 bg-red-50 text-red-800"
+                      : "border border-emerald-200 bg-white text-emerald-800"
+                  }`}
+                >
+                  {error || message}
+                </div>
+              )}
+
+              {routeResult && (
+                <section className="rounded-md bg-white p-4 shadow-sm ring-1 ring-emerald-100">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-bold text-emerald-950">訪問順</h2>
+                    <p className="text-base text-slate-600">
+                      {formatDistance(routeResult.distanceMeters)}
+                      <span className="ml-2">直線距離の目安</span>
+                    </p>
+                  </div>
+
+                  <div className="mb-5 grid gap-3">
+                    {(() => {
+                      const appleRouteUrl = buildAppleMultiStopNavigationUrl(
+                        config,
+                        routeResult.orderedUsers
+                      );
+                      const appleLineText = buildRouteShareText(
+                        "本日の送迎ルートです。iPhoneはこのリンクを押してAppleマップでまとめてナビ開始してください。",
+                        appleRouteUrl
+                      );
+                      const googleLineText = buildRouteShareText(
+                        "本日の送迎ルートです。Googleマップでまとめて開くリンクです。",
+                        routeUrl
+                      );
+
+                      return (
+                        <React.Fragment>
+                          <a
+                            href={buildLineShareTextUrl(appleLineText)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-h-16 items-center justify-center rounded-md bg-lime-600 px-4 text-center text-xl font-bold text-white"
+                          >
+                            LINEでナビ開始リンク共有
+                          </a>
+                          <input
+                            value={appleRouteUrl}
+                            readOnly
+                            onFocus={(event) => event.target.select()}
+                            className="w-full rounded-md border-2 border-lime-200 bg-lime-50 px-3 py-3 text-sm"
+                            aria-label="LINE共有用ナビ開始リンク"
+                          />
+                          <a
+                            href={buildLineShareTextUrl(googleLineText)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-h-14 items-center justify-center rounded-md border-2 border-lime-600 bg-white px-4 text-center text-lg font-bold text-lime-700"
+                          >
+                            LINEでGoogleマップリンク共有
+                          </a>
+                        </React.Fragment>
+                      );
+                    })()}
+                    <a
+                      href={buildAppleMultiStopNavigationUrl(config, routeResult.orderedUsers)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex min-h-16 items-center justify-center rounded-md bg-slate-900 px-4 text-center text-xl font-bold text-white"
+                    >
+                      Appleマップでまとめてナビ開始
+                    </a>
+                    <a
+                      href={buildGoogleMapsAppUrl(routeUrl)}
+                      className="flex min-h-14 items-center justify-center rounded-md bg-emerald-700 px-4 text-center text-lg font-bold text-white"
+                    >
+                      Googleマップアプリでまとめて開く
+                    </a>
+                    <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+                      iPhoneでまとめてナビする場合は、まずAppleマップを使ってください。Googleマップは経由地付きルートを表示できますが、案内開始はアプリ側の確認が入ることがあります。
+                    </p>
+                  </div>
+
+                  <ol className="flex flex-col gap-3">
+                    {routeResult.orderedUsers.map((user, index) => (
+                      <li
+                        key={user.id}
+                        className="rounded-md border border-emerald-100 bg-emerald-50 p-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-emerald-700 text-lg font-bold text-white">
+                            {index + 1}
+                          </span>
+                          <div>
+                            <p className="text-xl font-bold">{user.name}</p>
+                            <a href={`tel:${user.phone}`} className="inline-flex min-h-10 items-center font-semibold">
+                              {user.phone}
+                            </a>
+                          </div>
+                        </div>
+                        <p className="mt-3 text-base font-semibold text-emerald-950">{user.note}</p>
+                        <div className="mt-3 grid gap-2">
+                          <a
+                            href={buildIphoneGoogleMapsUrl(user.address)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-h-12 items-center justify-center rounded-md bg-emerald-700 px-3 text-base font-bold text-white"
+                          >
+                            iPhone Googleマップで開始
+                          </a>
+                          <a
+                            href={buildAppleMapsUrl(user.address)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-h-12 items-center justify-center rounded-md bg-slate-800 px-3 text-base font-bold text-white"
+                          >
+                            Appleマップで開始
+                          </a>
+                          <a
+                            href={buildSingleDestinationMapUrl(user.address)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex min-h-12 items-center justify-center rounded-md border-2 border-emerald-700 bg-white px-3 text-base font-bold text-emerald-800"
+                          >
+                            この人をマップで開く
+                          </a>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <a
+                      href={routeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex min-h-14 items-center justify-center rounded-md bg-emerald-700 px-4 text-lg font-bold text-white"
+                    >
+                      Googleマップ
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="min-h-14 rounded-md border-2 border-emerald-700 bg-white px-4 text-lg font-bold text-emerald-800"
+                    >
+                      リンクコピー
+                    </button>
+                    <a
+                      href={`https://line.me/R/msg/text/?${encodeURIComponent(`本日の送迎ルートです\n${routeUrl}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex min-h-14 items-center justify-center rounded-md bg-lime-600 px-4 text-lg font-bold text-white"
+                    >
+                      LINE共有
+                    </a>
+                  </div>
+
+                  <div className="mt-4 rounded-md border border-emerald-100 bg-white p-3">
+                    <p className="mb-2 text-sm font-bold text-emerald-950">
+                      コピーできない場合は下のURLを長押ししてコピー
+                    </p>
+                    <input
+                      value={routeUrl}
+                      readOnly
+                      onFocus={(event) => event.target.select()}
+                      className="w-full rounded-md border-2 border-slate-200 px-3 py-3 text-sm"
+                    />
+                  </div>
+                </section>
+              )}
+            </section>
+          </main>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
