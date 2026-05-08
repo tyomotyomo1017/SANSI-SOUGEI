@@ -367,6 +367,7 @@
         const sharedRoute = React.useMemo(() => getSharedRouteFromUrl(), []);
         const [config, setConfig] = React.useState(sharedRoute?.config ?? loadConfig);
         const [showSettings, setShowSettings] = React.useState(false);
+        const [searchTerm, setSearchTerm] = React.useState("");
         const [selectedIds, setSelectedIds] = React.useState([]);
         const [routeResult, setRouteResult] = React.useState(sharedRoute?.result ?? null);
         const [routeUrl, setRouteUrl] = React.useState(
@@ -380,6 +381,13 @@
           () => USERS.filter((user) => selectedIds.includes(user.id)),
           [selectedIds]
         );
+        const visibleUsers = React.useMemo(() => {
+          const keyword = searchTerm.trim();
+          if (!keyword) return USERS;
+          return USERS.filter((user) =>
+            `${user.name} ${user.address} ${user.phone}`.includes(keyword)
+          );
+        }, [searchTerm]);
         const configError = validateConfig(config);
         const allSelected = selectedIds.length === USERS.length;
 
@@ -462,20 +470,37 @@
         }
 
         return (
-          <main className="min-h-screen text-slate-900">
-            <section className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-5 sm:px-6">
-              <header className="rounded-md bg-white p-5 shadow-sm ring-1 ring-emerald-100">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-md bg-emerald-700 text-white">
-                    <Icon>↗</Icon>
+          <main className="min-h-screen bg-slate-100 text-slate-900">
+            <section className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 pb-28 pt-4 sm:px-6">
+              <header className="overflow-hidden rounded-lg bg-emerald-900 text-white shadow-sm">
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-bold text-emerald-200">送迎ルート作成</p>
+                      <h1 className="mt-1 text-3xl font-black leading-tight">
+                        今日の送迎を作成
+                      </h1>
+                      <p className="mt-2 text-base font-semibold text-emerald-50">
+                        利用者を選ぶだけで、近い順に並び替えて共有リンクを作ります。
+                      </p>
+                    </div>
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-white text-3xl text-emerald-800">
+                      <Icon>↗</Icon>
+                    </div>
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold leading-tight text-emerald-950">
-                      送迎ルート作成 APIなし版
-                    </h1>
-                    <p className="mt-1 text-base text-slate-600">
-                      本日送迎する利用者を選択してください
-                    </p>
+                  <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-md bg-white/10 p-3">
+                      <p className="text-2xl font-black">{USERS.length}</p>
+                      <p className="text-xs font-bold text-emerald-100">登録者</p>
+                    </div>
+                    <div className="rounded-md bg-white/10 p-3">
+                      <p className="text-2xl font-black">{selectedIds.length}</p>
+                      <p className="text-xs font-bold text-emerald-100">選択中</p>
+                    </div>
+                    <div className="rounded-md bg-white/10 p-3">
+                      <p className="text-2xl font-black">{routeResult ? routeResult.orderedUsers.length : 0}</p>
+                      <p className="text-xs font-bold text-emerald-100">訪問先</p>
+                    </div>
                   </div>
                 </div>
               </header>
@@ -486,13 +511,13 @@
                 </div>
               )}
 
-              <section className="rounded-md bg-white p-4 shadow-sm ring-1 ring-emerald-100">
+              <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
                 <button
                   type="button"
                   onClick={() => setShowSettings((value) => !value)}
-                  className="flex min-h-12 w-full items-center justify-between rounded-md border-2 border-emerald-700 px-4 text-left text-lg font-bold text-emerald-900"
+                  className="flex min-h-12 w-full items-center justify-between rounded-md border-2 border-slate-200 bg-slate-50 px-4 text-left text-lg font-bold text-slate-800"
                 >
-                  <span>出発地・到着地 設定</span>
+                  <span>出発地・到着地</span>
                   <span>{showSettings ? "閉じる" : "開く"}</span>
                 </button>
 
@@ -503,25 +528,25 @@
                         value={config.startLat}
                         onChange={(event) => updateConfig("startLat", event.target.value.trim())}
                         placeholder="出発 緯度"
-                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                        className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
                       />
                       <input
                         value={config.startLng}
                         onChange={(event) => updateConfig("startLng", event.target.value.trim())}
                         placeholder="出発 経度"
-                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                        className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
                       />
                       <input
                         value={config.endLat}
                         onChange={(event) => updateConfig("endLat", event.target.value.trim())}
                         placeholder="到着 緯度"
-                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                        className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
                       />
                       <input
                         value={config.endLng}
                         onChange={(event) => updateConfig("endLng", event.target.value.trim())}
                         placeholder="到着 経度"
-                        className="min-h-12 rounded-md border-2 border-slate-200 px-3 text-base"
+                        className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
                       />
                     </div>
                     {configError && (
@@ -533,11 +558,13 @@
                 )}
               </section>
 
-              <section className="rounded-md bg-white p-4 shadow-sm ring-1 ring-emerald-100">
+              <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-bold text-emerald-950">利用者一覧</h2>
-                    <p className="text-base text-slate-600">選択中 {selectedIds.length} 名</p>
+                    <h2 className="text-2xl font-black text-slate-950">利用者一覧</h2>
+                    <p className="text-base font-semibold text-slate-600">
+                      {selectedIds.length}名を選択中
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -545,21 +572,28 @@
                       resetRoute();
                       setSelectedIds(allSelected ? [] : USERS.map((user) => user.id));
                     }}
-                    className="min-h-12 rounded-md border-2 border-emerald-700 px-4 text-base font-bold text-emerald-800"
+                    className="min-h-12 rounded-md border-2 border-emerald-700 bg-white px-4 text-base font-bold text-emerald-800"
                   >
-                    全員
+                    {allSelected ? "全解除" : "全員選択"}
                   </button>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  {USERS.map((user) => {
+                <input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="名前・住所・電話番号で検索"
+                  className="mb-4 min-h-14 w-full rounded-md border-2 border-slate-200 bg-slate-50 px-4 text-lg font-semibold"
+                />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {visibleUsers.map((user) => {
                     const checked = selectedIds.includes(user.id);
                     return (
                       <label
                         key={user.id}
-                        className={`flex cursor-pointer gap-3 rounded-md border-2 p-4 ${
+                        className={`flex cursor-pointer gap-3 rounded-lg border-2 p-4 shadow-sm transition ${
                           checked
-                            ? "border-emerald-600 bg-emerald-50"
+                            ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-100"
                             : "border-slate-200 bg-white"
                         }`}
                       >
@@ -567,17 +601,26 @@
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleUser(user.id)}
-                          className="mt-1 h-7 w-7 accent-emerald-700"
+                          className="mt-1 h-8 w-8 shrink-0 accent-emerald-700"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="break-words text-xl font-bold">{user.name}</p>
-                          <p className="mt-1 break-words text-base text-slate-600">{user.address}</p>
-                          <p className="mt-2 break-words text-base font-semibold text-emerald-900">
-                            {user.note}
-                          </p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="break-words text-xl font-black text-slate-950">{user.name}</p>
+                            {checked && (
+                              <span className="rounded-full bg-emerald-700 px-2 py-1 text-xs font-bold text-white">
+                                選択
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 break-words text-base font-semibold text-slate-600">{user.address}</p>
+                          {user.note && (
+                            <p className="mt-2 break-words text-base font-semibold text-emerald-900">
+                              {user.note}
+                            </p>
+                          )}
                           <a
                             href={`tel:${user.phone}`}
-                            className="mt-2 inline-flex min-h-10 items-center text-base font-semibold text-slate-800"
+                            className="mt-2 inline-flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-base font-bold text-slate-800"
                           >
                             {user.phone}
                           </a>
@@ -588,14 +631,20 @@
                 </div>
               </section>
 
-              <button
-                type="button"
-                onClick={handleCreateRoute}
-                disabled={isLoading || selectedUsers.length === 0 || Boolean(configError)}
-                className="min-h-16 w-full rounded-md bg-emerald-700 px-5 text-xl font-bold text-white shadow-sm disabled:bg-slate-400"
-              >
-                {isLoading ? "ルート作成中..." : "APIなしでルート作成"}
-              </button>
+              <div className="sticky bottom-3 z-20 rounded-lg bg-white/95 p-3 shadow-lg ring-1 ring-slate-200 backdrop-blur">
+                <button
+                  type="button"
+                  onClick={handleCreateRoute}
+                  disabled={isLoading || selectedUsers.length === 0 || Boolean(configError)}
+                  className="min-h-16 w-full rounded-md bg-emerald-700 px-5 text-xl font-black text-white shadow-sm disabled:bg-slate-400"
+                >
+                  {isLoading
+                    ? "ルート作成中..."
+                    : selectedUsers.length > 0
+                      ? `${selectedUsers.length}名でルート作成`
+                      : "利用者を選択してください"}
+                </button>
+              </div>
 
               {(message || error) && (
                 <div
@@ -610,10 +659,11 @@
               )}
 
               {routeResult && (
-                <section className="rounded-md bg-white p-4 shadow-sm ring-1 ring-emerald-100">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold text-emerald-950">訪問順</h2>
-                    <p className="text-base text-slate-600">
+                <section className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                  <div className="mb-4 rounded-lg bg-slate-900 p-4 text-white">
+                    <p className="text-sm font-bold text-emerald-200">ルート作成完了</p>
+                    <h2 className="mt-1 text-2xl font-black">訪問順と共有リンク</h2>
+                    <p className="mt-2 text-base font-semibold text-slate-200">
                       {formatDistance(routeResult.distanceMeters)}
                       <span className="ml-2">直線距離の目安</span>
                     </p>
@@ -641,8 +691,8 @@
 
                       return (
                         <React.Fragment>
-                          <div className="rounded-md border-2 border-emerald-200 bg-emerald-50 p-4">
-                            <h3 className="text-lg font-bold text-emerald-950">
+                          <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50 p-4">
+                            <h3 className="text-xl font-black text-emerald-950">
                               担当者へ送るリンク
                             </h3>
                             <p className="mt-1 text-sm font-semibold text-emerald-900">
@@ -653,7 +703,7 @@
                             href={buildLineShareTextUrl(iphoneLineText)}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex min-h-16 items-center justify-center rounded-md bg-slate-900 px-4 text-center text-xl font-bold text-white"
+                            className="flex min-h-16 items-center justify-center rounded-md bg-slate-900 px-4 text-center text-xl font-black text-white"
                           >
                             iPhone用 Apple一括案内リンクをLINE共有
                           </a>
@@ -668,7 +718,7 @@
                             href={buildLineShareTextUrl(androidLineText)}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex min-h-16 items-center justify-center rounded-md bg-emerald-700 px-4 text-center text-xl font-bold text-white"
+                            className="flex min-h-16 items-center justify-center rounded-md bg-emerald-700 px-4 text-center text-xl font-black text-white"
                           >
                             Android用 Google一括案内リンクをLINE共有
                           </a>
@@ -683,7 +733,7 @@
                             href={buildLineShareTextUrl(appLineText)}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex min-h-14 items-center justify-center rounded-md border-2 border-lime-600 bg-white px-4 text-center text-lg font-bold text-lime-700"
+                            className="flex min-h-14 items-center justify-center rounded-md border-2 border-lime-600 bg-white px-4 text-center text-lg font-black text-lime-700"
                           >
                             端末選択用リンクをLINE共有
                           </a>
@@ -694,7 +744,7 @@
                       href={buildAppleMultiStopNavigationUrl(config, routeResult.orderedUsers)}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex min-h-16 items-center justify-center rounded-md bg-slate-900 px-4 text-center text-xl font-bold text-white"
+                      className="flex min-h-16 items-center justify-center rounded-md bg-slate-900 px-4 text-center text-xl font-black text-white"
                     >
                       iPhone: Appleマップ一括案内
                     </a>
@@ -702,7 +752,7 @@
                       href={routeUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex min-h-16 items-center justify-center rounded-md bg-emerald-700 px-4 text-center text-xl font-bold text-white"
+                      className="flex min-h-16 items-center justify-center rounded-md bg-emerald-700 px-4 text-center text-xl font-black text-white"
                     >
                       Android: Googleマップ一括案内
                     </a>
@@ -711,18 +761,19 @@
                     </p>
                   </div>
 
+                  <h3 className="mb-3 text-xl font-black text-slate-950">訪問順</h3>
                   <ol className="flex flex-col gap-3">
                     {routeResult.orderedUsers.map((user, index) => (
                       <li
                         key={user.id}
-                        className="rounded-md border border-emerald-100 bg-emerald-50 p-4"
+                        className="rounded-lg border border-emerald-100 bg-emerald-50 p-4 shadow-sm"
                       >
                         <div className="flex items-center gap-3">
                           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-emerald-700 text-lg font-bold text-white">
                             {index + 1}
                           </span>
                           <div>
-                            <p className="text-xl font-bold">{user.name}</p>
+                            <p className="text-xl font-black">{user.name}</p>
                             <a href={`tel:${user.phone}`} className="inline-flex min-h-10 items-center font-semibold">
                               {user.phone}
                             </a>
@@ -762,21 +813,21 @@
                       href={routeUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex min-h-14 items-center justify-center rounded-md bg-emerald-700 px-4 text-lg font-bold text-white"
+                      className="flex min-h-14 items-center justify-center rounded-md bg-emerald-700 px-4 text-lg font-black text-white"
                     >
                       Googleマップ
                     </a>
                     <button
                       type="button"
                       onClick={handleCopy}
-                      className="min-h-14 rounded-md border-2 border-emerald-700 bg-white px-4 text-lg font-bold text-emerald-800"
+                      className="min-h-14 rounded-md border-2 border-emerald-700 bg-white px-4 text-lg font-black text-emerald-800"
                     >
                       リンクコピー
                     </button>
                   </div>
 
                   <div className="mt-4 rounded-md border border-emerald-100 bg-white p-3">
-                    <p className="mb-2 text-sm font-bold text-emerald-950">
+                    <p className="mb-2 text-sm font-black text-emerald-950">
                       コピーできない場合は下のURLを長押ししてコピー
                     </p>
                     <input
