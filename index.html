@@ -253,7 +253,7 @@
           source: `${config.startLat},${config.startLng}`,
           destination: `${config.endLat},${config.endLng}`,
           mode: "driving",
-          start: "1"
+          start: "5"
         });
 
         orderedUsers.forEach((user) => {
@@ -302,6 +302,55 @@
         return `${title}\n${url}`;
       }
 
+      function encodeRoutePayload(payload) {
+        const json = JSON.stringify(payload);
+        return btoa(unescape(encodeURIComponent(json)));
+      }
+
+      function decodeRoutePayload(value) {
+        try {
+          const json = decodeURIComponent(escape(atob(value)));
+          return JSON.parse(json);
+        } catch {
+          return null;
+        }
+      }
+
+      function buildShareableAppUrl(config, orderedUsers) {
+        const payload = {
+          config,
+          users: orderedUsers.map((user) => user.id)
+        };
+        const url = new URL(window.location.href);
+        url.search = "";
+        url.hash = "";
+        url.searchParams.set("route", encodeRoutePayload(payload));
+        return url.toString();
+      }
+
+      function getSharedRouteFromUrl() {
+        const routeParam = new URLSearchParams(window.location.search).get("route");
+        if (!routeParam) return null;
+
+        const payload = decodeRoutePayload(routeParam);
+        if (!payload?.config || !Array.isArray(payload.users)) return null;
+
+        const orderedUsers = payload.users
+          .map((id) => USERS.find((user) => user.id === id))
+          .filter(Boolean);
+
+        if (orderedUsers.length === 0) return null;
+
+        return {
+          config: { ...defaultConfig, ...payload.config },
+          result: {
+            orderedUsers,
+            distanceMeters: 0,
+            duration: ""
+          }
+        };
+      }
+
       function formatDistance(meters) {
         return meters ? `${(meters / 1000).toFixed(1)} km` : "";
       }
@@ -321,11 +370,14 @@
       }
 
       function App() {
-        const [config, setConfig] = React.useState(loadConfig);
+        const sharedRoute = React.useMemo(() => getSharedRouteFromUrl(), []);
+        const [config, setConfig] = React.useState(sharedRoute?.config ?? loadConfig);
         const [showSettings, setShowSettings] = React.useState(false);
         const [selectedIds, setSelectedIds] = React.useState([]);
-        const [routeResult, setRouteResult] = React.useState(null);
-        const [routeUrl, setRouteUrl] = React.useState("");
+        const [routeResult, setRouteResult] = React.useState(sharedRoute?.result ?? null);
+        const [routeUrl, setRouteUrl] = React.useState(
+          sharedRoute ? buildGoogleMapsUrl(sharedRoute.config, sharedRoute.result.orderedUsers) : ""
+        );
         const [message, setMessage] = React.useState("");
         const [error, setError] = React.useState("");
         const [isLoading, setIsLoading] = React.useState(false);
@@ -433,6 +485,12 @@
                   </div>
                 </div>
               </header>
+
+              {sharedRoute && (
+                <div className="rounded-md border-2 border-lime-300 bg-lime-50 p-4 text-base font-bold text-lime-900">
+                  LINE共有された送迎ルートを開いています。下の「Appleマップでまとめてナビ開始」を押してください。
+                </div>
+              )}
 
               <section className="rounded-md bg-white p-4 shadow-sm ring-1 ring-emerald-100">
                 <button
@@ -573,9 +631,10 @@
                         config,
                         routeResult.orderedUsers
                       );
+                      const appShareUrl = buildShareableAppUrl(config, routeResult.orderedUsers);
                       const appleLineText = buildRouteShareText(
-                        "本日の送迎ルートです。iPhoneはこのリンクを押してAppleマップでまとめてナビ開始してください。",
-                        appleRouteUrl
+                        "本日の送迎ルートです。このリンクを開いて、画面の「Appleマップでまとめてナビ開始」を押してください。",
+                        appShareUrl
                       );
                       const googleLineText = buildRouteShareText(
                         "本日の送迎ルートです。Googleマップでまとめて開くリンクです。",
@@ -593,7 +652,7 @@
                             LINEでナビ開始リンク共有
                           </a>
                           <input
-                            value={appleRouteUrl}
+                            value={appShareUrl}
                             readOnly
                             onFocus={(event) => event.target.select()}
                             className="w-full rounded-md border-2 border-lime-200 bg-lime-50 px-3 py-3 text-sm"
