@@ -17,101 +17,103 @@
         {
           id: "u001",
           name: "板屋越 曉子",
-          address: "三重県四日市市あかつき台一丁目1-1-90",
+          address: "三重県四日市市あかつき台1丁目1-1-90",
           note: "",
           phone: "338-0492"
         },
         {
           id: "u002",
           name: "後藤 敏郎",
-          address: "三重県四日市市あかつき台一丁目1-1-170",
+          address: "三重県四日市市あかつき台1丁目1-1-170",
           note: "",
           phone: "090-8335-7810"
         },
         {
           id: "u003",
           name: "荒木 昌子",
-          address: "三重県四日市市あかつき台一丁目1-1-137",
+          address: "三重県四日市市あかつき台1丁目1-1-137",
           note: "",
           phone: "338-0491"
         },
         {
           id: "u004",
           name: "横井 由紀子",
-          address: "三重県四日市市あかつき台二丁目1-1-134",
+          address: "三重県四日市市あかつき台2丁目1-1-134",
           note: "",
           phone: "337-1564"
         },
         {
           id: "u005",
           name: "後藤 ともこ",
-          address: "三重県四日市市あかつき台二丁目2-1-172",
+          address: "三重県四日市市あかつき台2丁目2-1-172",
           note: "",
           phone: "070-5250-5365"
         },
         {
           id: "u006",
           name: "荒木 みゆき",
-          address: "三重県四日市市あかつき台二丁目2-88",
+          address: "三重県四日市市あかつき台2丁目2-88",
           note: "",
           phone: "059-337-3781"
         },
         {
           id: "u007",
           name: "中川 昌子",
-          address: "三重県四日市市あかつき台二丁目2-1-40",
+          address: "三重県四日市市あかつき台2丁目2-1-40",
           note: "",
           phone: "059-338-4523"
         },
         {
           id: "u008",
           name: "伊藤 かず子",
-          address: "三重県四日市市あかつき台二丁目2-1-33",
+          address: "三重県四日市市あかつき台2丁目2-1-33",
           note: "",
           phone: "090-1746-1596"
         },
         {
           id: "u009",
           name: "青山 すずよ",
-          address: "三重県四日市市あかつき台三丁目3-1-189",
+          address: "三重県四日市市あかつき台3丁目3-1-189",
           note: "",
           phone: "090-4268-4217"
         },
         {
           id: "u010",
           name: "伊藤 みえこ",
-          address: "三重県四日市市あかつき台三丁目3-1-165",
+          address: "三重県四日市市あかつき台3丁目3-1-165",
           note: "",
           phone: "090-8736-5102"
         },
         {
           id: "u011",
           name: "横山 楽",
-          address: "三重県四日市市あかつき台四丁目4-1-81",
+          address: "三重県四日市市あかつき台4丁目4-1-81",
           note: "",
           phone: "090-5864-3876"
         },
         {
           id: "u012",
           name: "松本 眞佐子",
-          address: "三重県四日市市あかつき台五丁目7-29",
+          address: "三重県四日市市あかつき台5丁目7-29",
           note: "",
           phone: "059-337-1227"
         },
         {
           id: "u013",
           name: "鈴木 英子",
-          address: "三重県四日市市あかつき台六丁目6-6-4",
+          address: "三重県四日市市あかつき台6丁目6-6-4",
           note: "",
           phone: "059-338-0058"
         }
       ];
 
-      const STORAGE_KEY = "pickup-route-planner-config-no-api";
+      const STORAGE_KEY = "pickup-route-planner-config-no-api-v2";
 
       const defaultConfig = {
+        startAddress: "三重県四日市市あかつき台二丁目1-192",
         startLat: "35.024952",
         startLng: "136.601613",
+        endAddress: "三重県四日市市生桑町榎下167-1",
         endLat: "34.987812",
         endLng: "136.599919"
       };
@@ -120,8 +122,10 @@
         try {
           const savedConfig = JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {};
           return {
+            startAddress: savedConfig.startAddress || defaultConfig.startAddress,
             startLat: savedConfig.startLat || defaultConfig.startLat,
             startLng: savedConfig.startLng || defaultConfig.startLng,
+            endAddress: savedConfig.endAddress || defaultConfig.endAddress,
             endLat: savedConfig.endLat || defaultConfig.endLat,
             endLng: savedConfig.endLng || defaultConfig.endLng
           };
@@ -136,8 +140,8 @@
 
       function validateConfig(config) {
         const missing = [];
-        if (!config.startLat || !config.startLng) missing.push("出発地点");
-        if (!config.endLat || !config.endLng) missing.push("到着地点");
+        if (!config.startAddress && (!config.startLat || !config.startLng)) missing.push("出発地点");
+        if (!config.endAddress && (!config.endLat || !config.endLng)) missing.push("到着地点");
 
         const numbers = [config.startLat, config.startLng, config.endLat, config.endLng];
         const invalidNumber = numbers.some((value) => value && !Number.isFinite(Number(value)));
@@ -229,10 +233,12 @@
       }
 
       function buildGoogleMapsUrl(config, orderedUsers) {
+        const origin = config.startAddress || `${config.startLat},${config.startLng}`;
+        const destination = config.endAddress || `${config.endLat},${config.endLng}`;
         const params = new URLSearchParams({
           api: "1",
-          origin: `${config.startLat},${config.startLng}`,
-          destination: `${config.endLat},${config.endLng}`,
+          origin,
+          destination,
           travelmode: "driving",
           dir_action: "navigate"
         });
@@ -245,9 +251,11 @@
       }
 
       function buildAppleMultiStopNavigationUrl(config, orderedUsers) {
+        const source = config.startAddress || `${config.startLat},${config.startLng}`;
+        const destination = config.endAddress || `${config.endLat},${config.endLng}`;
         const params = new URLSearchParams({
-          source: `${config.startLat},${config.startLng}`,
-          destination: `${config.endLat},${config.endLng}`,
+          source,
+          destination,
           mode: "driving",
           start: "5"
         });
@@ -517,38 +525,29 @@
                   onClick={() => setShowSettings((value) => !value)}
                   className="flex min-h-12 w-full items-center justify-between rounded-md border-2 border-slate-200 bg-slate-50 px-4 text-left text-lg font-bold text-slate-800"
                 >
-                  <span>出発地・到着地</span>
+                  <span>出発地・到着地 住所</span>
                   <span>{showSettings ? "閉じる" : "開く"}</span>
                 </button>
 
                 {showSettings && (
                   <div className="mt-4 grid gap-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid gap-3">
                       <input
-                        value={config.startLat}
-                        onChange={(event) => updateConfig("startLat", event.target.value.trim())}
-                        placeholder="出発 緯度"
+                        value={config.startAddress}
+                        onChange={(event) => updateConfig("startAddress", event.target.value.trim())}
+                        placeholder="出発地 住所"
                         className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
                       />
                       <input
-                        value={config.startLng}
-                        onChange={(event) => updateConfig("startLng", event.target.value.trim())}
-                        placeholder="出発 経度"
-                        className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
-                      />
-                      <input
-                        value={config.endLat}
-                        onChange={(event) => updateConfig("endLat", event.target.value.trim())}
-                        placeholder="到着 緯度"
-                        className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
-                      />
-                      <input
-                        value={config.endLng}
-                        onChange={(event) => updateConfig("endLng", event.target.value.trim())}
-                        placeholder="到着 経度"
+                        value={config.endAddress}
+                        onChange={(event) => updateConfig("endAddress", event.target.value.trim())}
+                        placeholder="到着地 住所"
                         className="min-h-12 rounded-md border-2 border-slate-200 bg-white px-3 text-base"
                       />
                     </div>
+                    <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm font-semibold text-slate-600">
+                      ナビには住所を渡します。緯度経度は画面には表示せず、近い順の並び替え計算だけに使っています。
+                    </p>
                     {configError && (
                       <div className="rounded-md border border-amber-300 bg-amber-50 p-3 font-semibold text-amber-900">
                         {configError}
