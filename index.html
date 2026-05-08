@@ -274,12 +274,10 @@
 
       function buildIphoneGoogleMapsUrl(address) {
         const params = new URLSearchParams({
-          api: "1",
-          destination: address,
-          travelmode: "driving",
-          dir_action: "navigate"
+          daddr: address,
+          directionsmode: "driving"
         });
-        return `https://www.google.com/maps/dir/?${params.toString()}`;
+        return `comgooglemaps://?${params.toString()}`;
       }
 
       function buildAppleMapsUrl(address) {
@@ -685,6 +683,12 @@
                         </div>
                         <p className="mt-3 text-base font-semibold text-emerald-950">{user.note}</p>
                         <div className="mt-3 grid gap-2">
+                          <a
+                            href={buildIphoneGoogleMapsUrl(user.address)}
+                            className="flex min-h-12 items-center justify-center rounded-md bg-emerald-700 px-3 text-base font-bold text-white"
+                          >
+                            Googleマップで開始
+                          </a>
                           <a
                             href={buildAppleMapsUrl(user.address)}
                             target="_blank"
