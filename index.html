@@ -244,10 +244,6 @@
         return `https://www.google.com/maps/dir/?${params.toString()}`;
       }
 
-      function buildGoogleMapsAppUrl(routeUrl) {
-        return routeUrl.replace(/^https?:\/\//, "comgooglemapsurl://");
-      }
-
       function buildAppleMultiStopNavigationUrl(config, orderedUsers) {
         const params = new URLSearchParams({
           source: `${config.startLat},${config.startLng}`,
@@ -636,10 +632,6 @@
                         "本日の送迎ルートです。このリンクを開いて、画面の「Appleマップでまとめてナビ開始」を押してください。",
                         appShareUrl
                       );
-                      const googleLineText = buildRouteShareText(
-                        "本日の送迎ルートです。Googleマップでまとめて開くリンクです。",
-                        routeUrl
-                      );
 
                       return (
                         <React.Fragment>
@@ -658,14 +650,6 @@
                             className="w-full rounded-md border-2 border-lime-200 bg-lime-50 px-3 py-3 text-sm"
                             aria-label="LINE共有用ナビ開始リンク"
                           />
-                          <a
-                            href={buildLineShareTextUrl(googleLineText)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex min-h-14 items-center justify-center rounded-md border-2 border-lime-600 bg-white px-4 text-center text-lg font-bold text-lime-700"
-                          >
-                            LINEでGoogleマップリンク共有
-                          </a>
                         </React.Fragment>
                       );
                     })()}
@@ -677,14 +661,8 @@
                     >
                       Appleマップでまとめてナビ開始
                     </a>
-                    <a
-                      href={buildGoogleMapsAppUrl(routeUrl)}
-                      className="flex min-h-14 items-center justify-center rounded-md bg-emerald-700 px-4 text-center text-lg font-bold text-white"
-                    >
-                      Googleマップアプリでまとめて開く
-                    </a>
                     <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-                      iPhoneでまとめてナビする場合は、まずAppleマップを使ってください。Googleマップは経由地付きルートを表示できますが、案内開始はアプリ側の確認が入ることがあります。
+                      iPhoneでまとめてナビする場合はAppleマップを使ってください。Googleマップは経由地付きルートの案内開始が安定しないため、この画面ではAppleマップ中心にしています。
                     </p>
                   </div>
 
@@ -708,14 +686,6 @@
                         <p className="mt-3 text-base font-semibold text-emerald-950">{user.note}</p>
                         <div className="mt-3 grid gap-2">
                           <a
-                            href={buildIphoneGoogleMapsUrl(user.address)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex min-h-12 items-center justify-center rounded-md bg-emerald-700 px-3 text-base font-bold text-white"
-                          >
-                            iPhone Googleマップで開始
-                          </a>
-                          <a
                             href={buildAppleMapsUrl(user.address)}
                             target="_blank"
                             rel="noreferrer"
@@ -736,7 +706,7 @@
                     ))}
                   </ol>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     <a
                       href={routeUrl}
                       target="_blank"
@@ -752,14 +722,6 @@
                     >
                       リンクコピー
                     </button>
-                    <a
-                      href={`https://line.me/R/msg/text/?${encodeURIComponent(`本日の送迎ルートです\n${routeUrl}`)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex min-h-14 items-center justify-center rounded-md bg-lime-600 px-4 text-lg font-bold text-white"
-                    >
-                      LINE共有
-                    </a>
                   </div>
 
                   <div className="mt-4 rounded-md border border-emerald-100 bg-white p-3">
